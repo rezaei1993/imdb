@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+    ####################################################################################################
+    # nginx
+    ####################################################################################################
+    movie_nginx:
+        image: nginx:alpine
+        container_name: movie_nginx
+        ports:
+            - "9090:80"
+        volumes:
+            - ./src:/var/www
+            - ./nginx/conf.d/:/etc/nginx/conf.d/
+        networks:
+            - internal
+        depends_on:
+            - main_app
+            - mysql
+
+        ####################################################################################################
+        # PHP
+        ####################################################################################################
+    main_app:
+        container_name: main_app
+        build:
+            context: ./dockerfiles
+            dockerfile: php.dockerfile
+        volumes:
+            - ./src:/var/www
+            - ./custom-php.ini:/usr/local/etc/php/conf.d/custom-php.ini
+
+        ports:
+            - "8000:9000"
+        working_dir: /var/www
+        links:
+            - mysql
+        networks:
+            - internal
+
+    mysql:
+        image: 'mysql/mysql-server:8.0'
+        container_name: mysql
+        ports:
+            - '3307:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: 'password'
+            MYSQL_DATABASE: 'movieDb'
+            MYSQL_USER: 'danial'
+            MYSQL_PASSWORD: 'password'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        volumes:
+            - 'vmysql:/var/lib/mysql'
+        networks:
+            - internal
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
+            retries: 3
+            timeout: 5s
+
+        ####################################################################################################
+        # Networks
+        ####################################################################################################
+networks:
+    internal:
+        driver: bridge
+
+        ####################################################################################################
+        # Volumes
+        ####################################################################################################
+volumes:
+    vmysql:
+        driver: local
+
